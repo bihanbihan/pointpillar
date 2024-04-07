@@ -9,7 +9,7 @@ from nuscenes.utils.geometry_utils import view_points
 
 from mmdet3d.structures import points_cam2img
 from mmdet3d.structures.ops import box_np_ops
-from .kitti_data_utils import WaymoInfoGatherer, get_kitti_image_info
+from .kitti_data_utils import WaymoInfoGatherer, get_kitti_image_info,get_4d_image_info
 from .nuscenes_converter import post_process_coords
 
 kitti_categories = ('Pedestrian', 'Cyclist', 'Car')
@@ -66,7 +66,8 @@ class _NumPointsInGTCalculater:
                  data_path,
                  relative_path,
                  remove_outside=True,
-                 num_features=4,
+                #  num_features=4,
+                 num_features=6,
                  num_worker=8) -> None:
         self.data_path = data_path
         self.relative_path = relative_path
@@ -119,10 +120,20 @@ def _calculate_num_points_in_gt(data_path,
                                 infos,
                                 relative_path,
                                 remove_outside=True,
-                                num_features=4):
+                                num_features=6):
+    # for idx, info in enumerate(infos):
+    #     print(f"Sample {idx}:")
+    # for key, value in info.items():
+    #     print(f"  {key}: {value}")
+    
     for info in mmengine.track_iter_progress(infos):
+        for idx, info in enumerate(infos):
+            print(f"Sample {idx}:")
+        for key, value in info.items():
+            print(f"  {key}: {value}")
         pc_info = info['point_cloud']
         image_info = info['image']
+
         calib = info['calib']
         if relative_path:
             v_path = str(Path(data_path) / pc_info['velodyne_path'])
@@ -130,12 +141,20 @@ def _calculate_num_points_in_gt(data_path,
             v_path = pc_info['velodyne_path']
         points_v = np.fromfile(
             v_path, dtype=np.float32, count=-1).reshape([-1, num_features])
-        rect = calib['R0_rect']
-        Trv2c = calib['Tr_velo_to_cam']
-        P2 = calib['P2']
-        if remove_outside:
-            points_v = box_np_ops.remove_outside_points(
-                points_v, rect, Trv2c, P2, image_info['image_shape'])
+        rect = calib['R0_rect'] # 4*4
+        Trv2c = calib['Tr_velo_to_cam'] # 4*4
+        P2 = calib['P2']  # 4*4
+
+        # output shape
+        rect_shape = rect.shape
+        Trv2c_shape = Trv2c.shape
+        P2_shape = P2.shape
+        print(rect_shape,Trv2c_shape,P2_shape)
+
+
+        # if remove_outside:
+        #     points_v = box_np_ops.remove_outside_points(
+        #         points_v, rect, Trv2c, P2, image_info['image_shape'])
 
         # points_v = points_v[points_v[:, 0] > 0]
         annos = info['annos']
@@ -154,6 +173,7 @@ def _calculate_num_points_in_gt(data_path,
         num_points_in_gt = np.concatenate(
             [num_points_in_gt, -np.ones([num_ignored])])
         annos['num_points_in_gt'] = num_points_in_gt.astype(np.int32)
+
 
 
 def create_kitti_info_file(data_path,
@@ -191,8 +211,8 @@ def create_kitti_info_file(data_path,
         training=True,
         velodyne=True,
         calib=True,
-        with_plane=with_plane,
-        image_ids=train_img_ids,
+        # with_plane=with_plane,
+        # image_ids=train_img_ids,
         relative_path=relative_path)
     _calculate_num_points_in_gt(data_path, kitti_infos_train, relative_path)
     filename = save_path / f'{pkl_prefix}_infos_train.pkl'
@@ -203,8 +223,8 @@ def create_kitti_info_file(data_path,
         training=True,
         velodyne=True,
         calib=True,
-        with_plane=with_plane,
-        image_ids=val_img_ids,
+        # with_plane=with_plane,
+        # image_ids=val_img_ids,
         relative_path=relative_path)
     _calculate_num_points_in_gt(data_path, kitti_infos_val, relative_path)
     filename = save_path / f'{pkl_prefix}_infos_val.pkl'
@@ -220,38 +240,22 @@ def create_kitti_info_file(data_path,
         label_info=False,
         velodyne=True,
         calib=True,
-        with_plane=False,
-        image_ids=test_img_ids,
+        # with_plane=False,
+        # image_ids=test_img_ids,
         relative_path=relative_path)
     filename = save_path / f'{pkl_prefix}_infos_test.pkl'
     print(f'Kitti info test file is saved to {filename}')
     mmengine.dump(kitti_infos_test, filename)
 
-
-
-def create_waymo_info_file(data_path,
-                           pkl_prefix='waymo',
-                           save_path=None,
-                           relative_path=True,
-                           max_sweeps=5,
-                           workers=8):
-    """Create info file of waymo dataset.
-
-    Given the raw data, generate its related info file in pkl format.
-
-    Args:
-        data_path (str): Path of the data root.
-        pkl_prefix (str, optional): Prefix of the info file to be generated.
-            Default: 'waymo'.
-        save_path (str, optional): Path to save the info file.
-            Default: None.
-        relative_path (bool, optional): Whether to use relative path.
-            Default: True.
-        max_sweeps (int, optional): Max sweeps before the detection frame
-            to be used. Default: 5.
-    """
+def create_Radar_info_file(data_path, #Path of the data root
+                           pkl_prefix='4D_dataset',#Prefix of the info file to be generated
+                           with_plane=False,  #Whether to use plane information.
+                           save_path=None,    #Path to save the info file
+                           relative_path=True):#Whether to use relative path
+ 
     imageset_folder = Path(data_path) / 'ImageSets'
     train_img_ids = _read_imageset_file(str(imageset_folder / 'train.txt'))
+    # print(train_img_ids)
     val_img_ids = _read_imageset_file(str(imageset_folder / 'val.txt'))
     test_img_ids = _read_imageset_file(str(imageset_folder / 'test.txt'))
 
@@ -260,56 +264,61 @@ def create_waymo_info_file(data_path,
         save_path = Path(data_path)
     else:
         save_path = Path(save_path)
-    waymo_infos_gatherer_trainval = WaymoInfoGatherer(
+    kitti_infos_train = get_4d_image_info(
         data_path,
         training=True,
         velodyne=True,
         calib=True,
-        pose=True,
-        relative_path=relative_path,
-        max_sweeps=max_sweeps,
-        num_worker=workers)
-    waymo_infos_gatherer_test = WaymoInfoGatherer(
+        with_plane=with_plane,
+        image_ids=train_img_ids,
+        relative_path=relative_path)
+    print('get_kitti_image_info successfully')
+    # print(kitti_infos_train)
+
+    # # print kitti_infos_train
+    # for idx, info in enumerate(kitti_infos_train):
+    #     print(f"Sample {idx}:")
+    # for key, value in info.items():
+    #     print(f"  {key}: {value}")
+
+    _calculate_num_points_in_gt(data_path, kitti_infos_train, relative_path)
+    filename = save_path / f'{pkl_prefix}_infos_train.pkl'
+    print(f'Kitti info train file is saved to {filename}')
+    mmengine.dump(kitti_infos_train, filename)
+    kitti_infos_val = get_4d_image_info(
+        data_path,
+        training=True,
+        velodyne=True,
+        calib=True,
+        with_plane=with_plane,
+        image_ids=val_img_ids,
+        relative_path=relative_path)
+    _calculate_num_points_in_gt(data_path, kitti_infos_val, relative_path)
+    filename = save_path / f'{pkl_prefix}_infos_val.pkl'
+    print(f'Kitti info val file is saved to {filename}')
+    mmengine.dump(kitti_infos_val, filename)
+    filename = save_path / f'{pkl_prefix}_infos_trainval.pkl'
+    print(f'Kitti info trainval file is saved to {filename}')
+    mmengine.dump(kitti_infos_train + kitti_infos_val, filename)
+
+    kitti_infos_test = get_4d_image_info(
         data_path,
         training=False,
         label_info=False,
         velodyne=True,
         calib=True,
-        pose=True,
-        relative_path=relative_path,
-        max_sweeps=max_sweeps,
-        num_worker=workers)
-    num_points_in_gt_calculater = _NumPointsInGTCalculater(
-        data_path,
-        relative_path,
-        num_features=6,
-        remove_outside=False,
-        num_worker=workers)
-
-    waymo_infos_train = waymo_infos_gatherer_trainval.gather(train_img_ids)
-    num_points_in_gt_calculater.calculate(waymo_infos_train)
-    filename = save_path / f'{pkl_prefix}_infos_train.pkl'
-    print(f'Waymo info train file is saved to {filename}')
-    mmengine.dump(waymo_infos_train, filename)
-    waymo_infos_val = waymo_infos_gatherer_trainval.gather(val_img_ids)
-    num_points_in_gt_calculater.calculate(waymo_infos_val)
-    filename = save_path / f'{pkl_prefix}_infos_val.pkl'
-    print(f'Waymo info val file is saved to {filename}')
-    mmengine.dump(waymo_infos_val, filename)
-    filename = save_path / f'{pkl_prefix}_infos_trainval.pkl'
-    print(f'Waymo info trainval file is saved to {filename}')
-    mmengine.dump(waymo_infos_train + waymo_infos_val, filename)
-    waymo_infos_test = waymo_infos_gatherer_test.gather(test_img_ids)
+        with_plane=False,
+        image_ids=test_img_ids,
+        relative_path=relative_path)
     filename = save_path / f'{pkl_prefix}_infos_test.pkl'
-    print(f'Waymo info test file is saved to {filename}')
-    mmengine.dump(waymo_infos_test, filename)
-
+    print(f'Kitti info test file is saved to {filename}')
+    mmengine.dump(kitti_infos_test, filename)
 
 def _create_reduced_point_cloud(data_path,
                                 info_path,
                                 save_path=None,
                                 back=False,
-                                num_features=4,
+                                num_features=6,
                                 front_camera_id=2):
     """Create reduced point clouds for given info.
 

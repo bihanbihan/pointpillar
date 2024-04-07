@@ -15,6 +15,7 @@ nuscenes:
   dataset: nuScenes
   download_root: data
   data_root: data/nuscenes
+    #data_root: /home/tsing-adept/datasets/nuScenes
   # Scripts for unzipping datasets
   script: tools/dataset_converters/nuscenes_unzip.sh
 

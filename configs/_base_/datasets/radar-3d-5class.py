@@ -1,28 +1,17 @@
-# If point cloud range is changed, the models should also change their point
-# cloud range accordingly
-point_cloud_range = [-50, -50, -5, 50, 50, 3]
-# Using calibration info convert the Lidar-coordinate point cloud range to the
-# ego-coordinate point cloud range could bring a little promotion in nuScenes.
-# point_cloud_range = [-50, -50.8, -5, 50, 49.2, 3]
-# For nuScenes we usually do 10-class detection
-class_names = [
-    'car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
-    'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
-]
-metainfo = dict(classes=class_names)
-dataset_type = 'NuScenesDataset'
-data_root = 'data/nuscenes/'
-# data_root = '/home/tsing-adept/datasets/nuScenes/'
-# Input modality for nuScenes dataset, this is consistent with the submission
-# format which requires the information in input_modality.
+# dataset settings
+dataset_type = '4D_dataset'
+data_root = '/home/hgdx/mmdetection3d/data/4D_dataset/'
+# class_names = ['Pedestrian', 'Cyclist', 'Car', 'Truck', 'Bus']
+class_names = ['Pedestrian', 'Cyclist', 'Car', 'Bus']
+point_cloud_range = [-40, -40, -3, 40, 40, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
-data_prefix = dict(pts='samples/LIDAR_TOP', img='', sweeps='sweeps/LIDAR_TOP')
+metainfo = dict(classes=class_names)
 
 # Example to use different file client
 # Method 1: simply set the data root and let the file I/O module
 # automatically infer from prefix (not support LMDB and Memcache yet)
 
-# data_root = 's3://openmmlab/datasets/detection3d/nuscenes/'
+# data_root = 's3://openmmlab/datasets/detection3d/kitti/'
 
 # Method 2: Use backend_args, file_client_args in versions before 1.1.0
 # backend_args = dict(
@@ -33,27 +22,49 @@ data_prefix = dict(pts='samples/LIDAR_TOP', img='', sweeps='sweeps/LIDAR_TOP')
 #      }))
 backend_args = None
 
+db_sampler = dict(
+    data_root=data_root,
+    info_path=data_root + '_dbinfos_train.pkl',
+    rate=1.0,
+    prepare=dict(
+        filter_by_difficulty=[-1],
+        # filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Truck=5, Bus=5)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Bus=5)),
+    classes=class_names,
+    # sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=5, Bus=5),
+    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Bus=5),
+    points_loader=dict(
+        type='LoadPointsFromFile',
+        coord_type='LIDAR',
+        # load_dim=4,
+        load_dim=6,
+        use_dim=4,
+        backend_args=backend_args),
+    backend_args=backend_args)
+
 train_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=5,
-        use_dim=5,
-        backend_args=backend_args),
-    dict(
-        type='LoadPointsFromMultiSweeps',
-        sweeps_num=10,
+        load_dim=6,  
+        # load_dim=4,
+        use_dim=4,# x, y, z, intensity
         backend_args=backend_args),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),
+    dict(type='ObjectSample', db_sampler=db_sampler),
+    dict(
+        type='ObjectNoise',
+        num_try=100,
+        translation_std=[1.0, 1.0, 0.5],
+        global_rot_range=[0.0, 0.0],
+        rot_range=[-0.78539816, 0.78539816]),
+    dict(type='RandomFlip3D', flip_ratio_bev_horizontal=0.5),
     dict(
         type='GlobalRotScaleTrans',
-        rot_range=[-0.3925, 0.3925],
-        scale_ratio_range=[0.95, 1.05],
-        translation_std=[0, 0, 0]),
-    dict(type='RandomFlip3D', flip_ratio_bev_horizontal=0.5),
+        rot_range=[-0.78539816, 0.78539816],
+        scale_ratio_range=[0.95, 1.05]),
     dict(type='PointsRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
-    dict(type='ObjectNameFilter', classes=class_names),
     dict(type='PointShuffle'),
     dict(
         type='Pack3DDetInputs',
@@ -63,13 +74,9 @@ test_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=5,
-        use_dim=5,
-        backend_args=backend_args),
-    dict(
-        type='LoadPointsFromMultiSweeps',
-        sweeps_num=10,
-        test_mode=True,
+        # load_dim=4,
+        load_dim=6,
+        use_dim=4,
         backend_args=backend_args),
     dict(
         type='MultiScaleFlipAug3D',
@@ -94,32 +101,49 @@ eval_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=5,
-        use_dim=5,
-        backend_args=backend_args),
-    dict(
-        type='LoadPointsFromMultiSweeps',
-        sweeps_num=10,
-        test_mode=True,
+        # load_dim=4,
+        load_dim=6,
+        use_dim=4,
         backend_args=backend_args),
     dict(type='Pack3DDetInputs', keys=['points'])
 ]
 train_dataloader = dict(
-    batch_size=4,
+    batch_size=6,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
     dataset=dict(
+        type='RepeatDataset',
+        times=2,
+        dataset=dict(
+            type=dataset_type,
+            data_root=data_root,
+            ann_file='4D_dataset_infos_train.pkl',
+            data_prefix=dict(pts='training/velodyne_reduced'),
+            # data_prefix=dict(pts='training/velodyne'),
+            pipeline=train_pipeline,
+            modality=input_modality,
+            test_mode=False,
+            metainfo=metainfo,
+            # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
+            # and box_type_3d='Depth' in sunrgbd and scannet dataset.
+            box_type_3d='LiDAR',
+            backend_args=backend_args)))
+val_dataloader = dict(
+    batch_size=1,
+    num_workers=1,
+    persistent_workers=True,
+    drop_last=False,
+    sampler=dict(type='DefaultSampler', shuffle=False),
+    dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='nuscenes_infos_train.pkl',
-        pipeline=train_pipeline,
-        metainfo=metainfo,
+        data_prefix=dict(pts='training/velodyne_reduced'),
+        ann_file='4D_dataset_infos_val.pkl',
+        pipeline=test_pipeline,
         modality=input_modality,
-        test_mode=False,
-        data_prefix=data_prefix,
-        # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
-        # and box_type_3d='Depth' in sunrgbd and scannet dataset.
+        test_mode=True,
+        metainfo=metainfo,
         box_type_3d='LiDAR',
         backend_args=backend_args))
 test_dataloader = dict(
@@ -131,36 +155,17 @@ test_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='nuscenes_infos_val.pkl',
+        data_prefix=dict(pts='training/velodyne_reduced'),
+        ann_file='4D_dataset_infos_val.pkl',
         pipeline=test_pipeline,
-        metainfo=metainfo,
-        modality=input_modality,
-        data_prefix=data_prefix,
-        test_mode=True,
-        box_type_3d='LiDAR',
-        backend_args=backend_args))
-val_dataloader = dict(
-    batch_size=1,
-    num_workers=1,
-    persistent_workers=True,
-    drop_last=False,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        ann_file='nuscenes_infos_val.pkl',
-        pipeline=test_pipeline,
-        metainfo=metainfo,
         modality=input_modality,
         test_mode=True,
-        data_prefix=data_prefix,
+        metainfo=metainfo,
         box_type_3d='LiDAR',
         backend_args=backend_args))
-
 val_evaluator = dict(
-    type='NuScenesMetric',
-    data_root=data_root,
-    ann_file=data_root + 'nuscenes_infos_val.pkl',
+    type='KittiMetric',
+    ann_file=data_root + '4D_dataset_infos_val.pkl',
     metric='bbox',
     backend_args=backend_args)
 test_evaluator = val_evaluator

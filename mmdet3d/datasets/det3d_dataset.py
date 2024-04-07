@@ -112,6 +112,11 @@ class Det3DDataset(BaseDataset):
             for label_idx, name in enumerate(metainfo['classes']):
                 ori_label = self.METAINFO['classes'].index(name)
                 self.label_mapping[ori_label] = label_idx
+                
+            # classes_list = list(self.METAINFO['classes'])
+            # for label_idx, name in enumerate(metainfo['classes']):
+            #     ori_label = classes_list.index(name)
+            #     self.label_mapping[ori_label] = label_idx
 
             self.num_ins_per_cat = {name: 0 for name in metainfo['classes']}
         else:
@@ -381,6 +386,7 @@ class Det3DDataset(BaseDataset):
         # pre-pipline return None to random another in `__getitem__`
         if not self.test_mode and self.filter_empty_gt:
             if len(input_dict['ann_info']['gt_labels_3d']) == 0:
+                print(input_dict['ann_info'])
                 return None
 
         example = self.pipeline(input_dict)
@@ -390,6 +396,7 @@ class Det3DDataset(BaseDataset):
             # return None to random another in `__getitem__`
             if example is None or len(
                     example['data_samples'].gt_instances_3d.labels_3d) == 0:
+                print('example',example)
                 return None
 
         if self.show_ins_var:

@@ -44,7 +44,8 @@ def get_image_path(idx,
                    prefix,
                    training=True,
                    relative_path=True,
-                   exist_check=True,
+                #    exist_check=True,
+                   exist_check=False,
                    info_type='image_2',
                    file_tail='.png',
                    use_prefix_id=False):
@@ -56,8 +57,9 @@ def get_label_path(idx,
                    prefix,
                    training=True,
                    relative_path=True,
-                   exist_check=True,
-                   info_type='label_2',
+                #    exist_check=True,
+                   exist_check=False,
+                   info_type='label',
                    use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, info_type, '.txt', training,
                                relative_path, exist_check, use_prefix_id)
@@ -67,7 +69,8 @@ def get_plane_path(idx,
                    prefix,
                    training=True,
                    relative_path=True,
-                   exist_check=True,
+                #    exist_check=True,
+                   exist_check=False,
                    info_type='planes',
                    use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, info_type, '.txt', training,
@@ -78,7 +81,8 @@ def get_velodyne_path(idx,
                       prefix,
                       training=True,
                       relative_path=True,
-                      exist_check=True,
+                    #   exist_check=True,
+                      exist_check=False,
                       use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, 'velodyne', '.bin', training,
                                relative_path, exist_check, use_prefix_id)
@@ -88,7 +92,8 @@ def get_calib_path(idx,
                    prefix,
                    training=True,
                    relative_path=True,
-                   exist_check=True,
+                #    exist_check=True,
+                   exist_check=False,
                    use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, 'calib', '.txt', training,
                                relative_path, exist_check, use_prefix_id)
@@ -98,7 +103,8 @@ def get_pose_path(idx,
                   prefix,
                   training=True,
                   relative_path=True,
-                  exist_check=True,
+                #   exist_check=True,
+                  exist_check=False,
                   use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, 'pose', '.txt', training,
                                relative_path, exist_check, use_prefix_id)
@@ -108,7 +114,8 @@ def get_timestamp_path(idx,
                        prefix,
                        training=True,
                        relative_path=True,
-                       exist_check=True,
+                    #    exist_check=True,
+                       exist_check=False,
                        use_prefix_id=False):
     return get_kitti_info_path(idx, prefix, 'timestamp', '.txt', training,
                                relative_path, exist_check, use_prefix_id)
@@ -158,10 +165,22 @@ def get_label_anno(label_path):
     return annotations
 
 
-def _extend_matrix(mat):
+# def _extend_matrix(mat):
+#     mat = np.concatenate([mat, np.array([[0., 0., 0., 1.]])], axis=0)
+#     return mat
+def _extend_matrix(mat): # 3*4 -> 4*4
     mat = np.concatenate([mat, np.array([[0., 0., 0., 1.]])], axis=0)
     return mat
-
+def _extend_matrix2(mat): # 3*3 -> 4*4
+    mat_4x4 = np.zeros((4, 4))
+    mat_4x4[:3, :3] = mat
+    mat_4x4[3, 3] = 1
+    return mat_4x4
+    # if mat.shape != (3, 3):
+    #     raise ValueError("Input matrix must be 3x3")
+    # result = np.eye(4)
+    # result[:3, :3] = ma
+    # return result
 
 def get_kitti_image_info(path,
                          training=True,
@@ -203,8 +222,11 @@ def get_kitti_image_info(path,
     }
     """
     root_path = Path(path)
-    if not isinstance(image_ids, list):
+    print('get path OK')
+    if not isinstance(image_ids, list):  #ensure image_ids is a list
         image_ids = list(range(image_ids))
+        print('image_ids OK')
+    print('image_ids is a list')
 
     def map_func(idx):
         info = {}
@@ -216,6 +238,7 @@ def get_kitti_image_info(path,
         if velodyne:
             pc_info['velodyne_path'] = get_velodyne_path(
                 idx, path, training, relative_path)
+            # print(pc_info)
         image_info['image_path'] = get_image_path(idx, path, training,
                                                   relative_path)
         if with_imageshape:
@@ -236,45 +259,53 @@ def get_kitti_image_info(path,
                 idx, path, training, relative_path=False)
             with open(calib_path, 'r') as f:
                 lines = f.readlines()
-            P0 = np.array([float(info) for info in lines[0].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P1 = np.array([float(info) for info in lines[1].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P2 = np.array([float(info) for info in lines[2].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P3 = np.array([float(info) for info in lines[3].split(' ')[1:13]
-                           ]).reshape([3, 4])
+            # P0 = np.array([float(info) for info in lines[0].split(' ')[1:13]
+            #                ]).reshape([3, 4])
+            # P1 = np.array([float(info) for info in lines[1].split(' ')[1:13]
+            #                ]).reshape([3, 4])
+            P2 = np.array([float(info) for info in lines[0].split(' ')[1:13]]).reshape([3, 4])
+            # P3 = np.array([float(info) for info in lines[3].split(' ')[1:13]
+            #                ]).reshape([3, 4])
             if extend_matrix:
-                P0 = _extend_matrix(P0)
-                P1 = _extend_matrix(P1)
-                P2 = _extend_matrix(P2)
-                P3 = _extend_matrix(P3)
+            #     P0 = _extend_matrix(P0)
+            #     P1 = _extend_matrix(P1)
+                P2 = _extend_matrix(P2) # 3*3 -> 4*4
+            #     P3 = _extend_matrix(P3)
+                
             R0_rect = np.array([
-                float(info) for info in lines[4].split(' ')[1:10]
+                float(info) for info in lines[1].split(' ')[1:10]
             ]).reshape([3, 3])
+
             if extend_matrix:
-                rect_4x4 = np.zeros([4, 4], dtype=R0_rect.dtype)
-                rect_4x4[3, 3] = 1.
-                rect_4x4[:3, :3] = R0_rect
-            else:
-                rect_4x4 = R0_rect
+                # rect_4x4 = np.zeros([4, 4], dtype=R0_rect.dtype)
+                # rect_4x4[3, 3] = 1.
+                # rect_4x4[:3, :3] = R0_rect
+                R0_rect = _extend_matrix2(R0_rect) # 3*3 -> 4*4
+            # else:
+            #     rect_4x4 = R0_rect
 
             Tr_velo_to_cam = np.array([
-                float(info) for info in lines[5].split(' ')[1:13]
+                float(info) for info in lines[2].split(' ')[1:13]
             ]).reshape([3, 4])
-            Tr_imu_to_velo = np.array([
-                float(info) for info in lines[6].split(' ')[1:13]
-            ]).reshape([3, 4])
+            # Tr_arbe_to_velo
+            # Tr_ars_to_velo
+            # Tr_arbe_to_cam
+            # Tr_ars_to_cam
+
+            # Tr_imu_to_velo = np.array([
+            #     float(info) for info in lines[6].split(' ')[1:13]
+            # ]).reshape([3, 4])
             if extend_matrix:
-                Tr_velo_to_cam = _extend_matrix(Tr_velo_to_cam)
-                Tr_imu_to_velo = _extend_matrix(Tr_imu_to_velo)
-            calib_info['P0'] = P0
-            calib_info['P1'] = P1
+                Tr_velo_to_cam = _extend_matrix(Tr_velo_to_cam)  # 3*4 -> 4*4
+            #     Tr_imu_to_velo = _extend_matrix(Tr_imu_to_velo)
+            # calib_info['P0'] = P0
+            # calib_info['P1'] = P1
             calib_info['P2'] = P2
-            calib_info['P3'] = P3
-            calib_info['R0_rect'] = rect_4x4
-            calib_info['Tr_velo_to_cam'] = Tr_velo_to_cam
-            calib_info['Tr_imu_to_velo'] = Tr_imu_to_velo
+            # calib_info['P3'] = P3
+            # calib_info['R0_rect'] = rect_4x4
+            calib_info['R0_rect'] = R0_rect   # 4*4
+            calib_info['Tr_velo_to_cam'] = Tr_velo_to_cam  # 4*4
+            # calib_info['Tr_imu_to_velo'] = Tr_imu_to_velo
             info['calib'] = calib_info
 
         if with_plane:
@@ -293,7 +324,148 @@ def get_kitti_image_info(path,
         image_infos = executor.map(map_func, image_ids)
 
     return list(image_infos)
+def get_4d_image_info(path,
+                         training=True,
+                         label_info=True,
+                         velodyne=False,
+                         calib=False,
+                         with_plane=False,
+                         image_ids=7481,
+                         extend_matrix=True,
+                         num_worker=8,
+                         relative_path=True,
+                         with_imageshape=True):
+    """
+    KITTI annotation format version 2:
+    {
+        [optional]points: [N, 3+] point cloud
+        [optional, for kitti]image: {
+            image_idx: ...
+            image_path: ...
+            image_shape: ...
+        }
+        point_cloud: {
+            num_features: 4
+            velodyne_path: ...
+        }
+        [optional, for kitti]calib: {
+            R0_rect: ...
+            Tr_velo_to_cam: ...
+            P2: ...
+        }
+        annos: {
+            location: [num_gt, 3] array
+            dimensions: [num_gt, 3] array
+            rotation_y: [num_gt] angle array
+            name: [num_gt] ground truth name array
+            [optional]difficulty: kitti difficulty
+            [optional]group_ids: used for multi-part object
+        }
+    }
+    """
+    root_path = Path(path)
+    print('get path OK')
+    if not isinstance(image_ids, list):  #ensure image_ids is a list
+        image_ids = list(range(image_ids))
+        print('image_ids OK')
+    print('image_ids is a list')
 
+    def map_func(idx):
+        info = {}
+        pc_info = {'num_features': 6}
+        calib_info = {}
+
+        image_info = {'image_idx': idx}
+        annotations = None
+        if velodyne:
+            pc_info['velodyne_path'] = get_velodyne_path(
+                idx, path, training, relative_path)
+            # print(pc_info)
+        image_info['image_path'] = get_image_path(idx, path, training,
+                                                  relative_path)
+        if with_imageshape:
+            img_path = image_info['image_path']
+            if relative_path:
+                img_path = str(root_path / img_path)
+            image_info['image_shape'] = np.array(
+                io.imread(img_path).shape[:2], dtype=np.int32)
+        if label_info:
+            label_path = get_label_path(idx, path, training, relative_path)
+            if relative_path:
+                label_path = str(root_path / label_path)
+            annotations = get_label_anno(label_path)
+        info['image'] = image_info
+        info['point_cloud'] = pc_info
+        if calib:
+            calib_path = get_calib_path(
+                idx, path, training, relative_path=False)
+            with open(calib_path, 'r') as f:
+                lines = f.readlines()
+            # P0 = np.array([float(info) for info in lines[0].split(' ')[1:13]
+            #                ]).reshape([3, 4])
+            # P1 = np.array([float(info) for info in lines[1].split(' ')[1:13]
+            #                ]).reshape([3, 4])
+            P2 = np.array([float(info) for info in lines[0].split(' ')[1:13]]).reshape([3, 4])
+            # P3 = np.array([float(info) for info in lines[3].split(' ')[1:13]
+            #                ]).reshape([3, 4])
+            if extend_matrix:
+            #     P0 = _extend_matrix(P0)
+            #     P1 = _extend_matrix(P1)
+                P2 = _extend_matrix(P2) # 3*3 -> 4*4
+            #     P3 = _extend_matrix(P3)
+                
+            R0_rect = np.array([
+                float(info) for info in lines[1].split(' ')[1:10]
+            ]).reshape([3, 3])
+
+            if extend_matrix:
+                # rect_4x4 = np.zeros([4, 4], dtype=R0_rect.dtype)
+                # rect_4x4[3, 3] = 1.
+                # rect_4x4[:3, :3] = R0_rect
+                R0_rect = _extend_matrix2(R0_rect) # 3*3 -> 4*4
+            # else:
+            #     rect_4x4 = R0_rect
+
+            Tr_velo_to_cam = np.array([
+                float(info) for info in lines[2].split(' ')[1:13]
+            ]).reshape([3, 4])
+            # Tr_arbe_to_velo
+            # Tr_ars_to_velo
+            # Tr_arbe_to_cam
+            # Tr_ars_to_cam
+
+            # Tr_imu_to_velo = np.array([
+            #     float(info) for info in lines[6].split(' ')[1:13]
+            # ]).reshape([3, 4])
+            if extend_matrix:
+                Tr_velo_to_cam = _extend_matrix(Tr_velo_to_cam)  # 3*4 -> 4*4
+            #     Tr_imu_to_velo = _extend_matrix(Tr_imu_to_velo)
+            # calib_info['P0'] = P0
+            # calib_info['P1'] = P1
+            calib_info['P2'] = P2
+            # calib_info['P3'] = P3
+            # calib_info['R0_rect'] = rect_4x4
+            calib_info['R0_rect'] = R0_rect   # 4*4
+            calib_info['Tr_velo_to_cam'] = Tr_velo_to_cam  # 4*4
+            # calib_info['Tr_imu_to_velo'] = Tr_imu_to_velo
+            info['calib'] = calib_info
+
+        if with_plane:
+            plane_path = get_plane_path(idx, path, training, relative_path)
+            if relative_path:
+                plane_path = str(root_path / plane_path)
+            lines = mmengine.list_from_file(plane_path)
+            info['plane'] = np.array([float(i) for i in lines[3].split()])
+
+        if annotations is not None:
+            info['annos'] = annotations
+            add_difficulty_to_annos(info)
+        return info
+
+    with futures.ThreadPoolExecutor(num_worker) as executor:
+        image_infos = executor.map(map_func, image_ids)
+
+    return list(image_infos)
 
 class WaymoInfoGatherer:
     """

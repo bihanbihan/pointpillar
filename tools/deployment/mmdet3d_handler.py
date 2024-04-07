@@ -17,7 +17,7 @@ class MMdet3dHandler(BaseHandler):
     predicted results. For now, it only supports SECOND.
     """
     threshold = 0.5
-    load_dim = 4
+    load_dim = 6
     use_dim = [0, 1, 2, 3]
     coord_type = 'LIDAR'
     attribute_dims = None

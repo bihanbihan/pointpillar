@@ -10,7 +10,7 @@ model = dict(
     backbone=dict(
         type='DLANet',
         depth=34,
-        in_channels=3,
+        in_channels=4,
         norm_cfg=dict(type='GN', num_groups=32),
         init_cfg=dict(
             type='Pretrained',

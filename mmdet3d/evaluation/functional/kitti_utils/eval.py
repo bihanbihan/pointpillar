@@ -28,7 +28,7 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
 
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
-    CLASS_NAMES = ['car', 'pedestrian', 'cyclist']
+    CLASS_NAMES = ['car', 'pedestrian', 'cyclist', 'Bus']
     MIN_HEIGHT = [40, 25, 25]
     MAX_OCCLUSION = [0, 1, 2]
     MAX_TRUNCATION = [0.15, 0.3, 0.5]
@@ -680,16 +680,18 @@ def kitti_eval(gt_annos,
         assert 'bbox' in eval_types, 'must evaluate bbox when evaluating aos'
     overlap_0_7 = np.array([[0.7, 0.5, 0.5, 0.7,
                              0.5], [0.7, 0.5, 0.5, 0.7, 0.5],
+                            [0.7, 0.5, 0.5, 0.7, 0.5],
                             [0.7, 0.5, 0.5, 0.7, 0.5]])
     overlap_0_5 = np.array([[0.7, 0.5, 0.5, 0.7, 0.5],
                             [0.5, 0.25, 0.25, 0.5, 0.25],
-                            [0.5, 0.25, 0.25, 0.5, 0.25]])
+                            [0.5, 0.25, 0.25, 0.5, 0.25],
+                            [0.7, 0.5, 0.5, 0.7, 0.5]])
     min_overlaps = np.stack([overlap_0_7, overlap_0_5], axis=0)  # [2, 3, 5]
     class_to_name = {
         0: 'Car',
         1: 'Pedestrian',
         2: 'Cyclist',
-        3: 'Van',
+        3: 'Bus',
         4: 'Person_sitting',
     }
     name_to_class = {v: n for n, v in class_to_name.items()}

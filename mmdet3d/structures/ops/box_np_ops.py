@@ -32,6 +32,8 @@ def camera_to_lidar(points, r_rect, velo2cam):
         points = np.concatenate([points, np.ones(points_shape + [1])], axis=-1)
     lidar_points = points @ np.linalg.inv((r_rect @ velo2cam).T)
     return lidar_points[..., :3]
+    # return lidar_points
+
 
 
 def box_camera_to_lidar(data, r_rect, velo2cam):

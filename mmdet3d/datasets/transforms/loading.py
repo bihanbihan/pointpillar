@@ -361,6 +361,7 @@ class LoadPointsFromMultiSweeps(BaseTransform):
             np.ndarray: An array containing point clouds data.
         """
         try:
+            # print(pts_filename)
             pts_bytes = get(pts_filename, backend_args=self.backend_args)
             points = np.frombuffer(pts_bytes, dtype=np.float32)
         except ConnectionError:
@@ -588,7 +589,9 @@ class LoadPointsFromFile(BaseTransform):
     def __init__(self,
                  coord_type: str,
                  load_dim: int = 6,
-                 use_dim: Union[int, List[int]] = [0, 1, 2],
+                #  load_dim: int = 4,
+                #  use_dim: Union[int, List[int]] = [0, 1, 2],
+                 use_dim: Union[int, List[int]] = [0, 1, 2, 3],
                  shift_height: bool = False,
                  use_color: bool = False,
                  norm_intensity: bool = False,
@@ -618,6 +621,7 @@ class LoadPointsFromFile(BaseTransform):
         Returns:
             np.ndarray: An array containing point clouds data.
         """
+        #print('3301',pts_filename)
         try:
             pts_bytes = get(pts_filename, backend_args=self.backend_args)
             points = np.frombuffer(pts_bytes, dtype=np.float32)
@@ -627,7 +631,7 @@ class LoadPointsFromFile(BaseTransform):
                 points = np.load(pts_filename)
             else:
                 points = np.fromfile(pts_filename, dtype=np.float32)
-
+        #print('3302',pts_filename, points.shape)
         return points
 
     def transform(self, results: dict) -> dict:
@@ -644,8 +648,25 @@ class LoadPointsFromFile(BaseTransform):
         """
         pts_file_path = results['lidar_points']['lidar_path']
         points = self._load_points(pts_file_path)
-        points = points.reshape(-1, self.load_dim)
-        points = points[:, self.use_dim]
+
+
+        # when point cloud is empty
+        # if pts_file_path == "/home/hgdx/mmdetection3d/data/4D_dataset/training/velodyne_reduced/009880.bin":
+        #     return
+        
+        # if points.shape[0] == 0:
+        #     return
+
+
+        if points.shape[0] == 0:
+            print(f"Skipping empty point cloud file: {pts_file_path}")  # Skip further processing for this file
+            return
+        else:
+            points = points.reshape(-1, self.load_dim) # load_dim = 6
+            points = points[:, self.use_dim] # use_dim = 4
+            print(pts_file_path,points.shape)
+
+        # points = points[:, self.use_dim]
         if self.norm_intensity:
             assert len(self.use_dim) >= 4, \
                 f'When using intensity norm, expect used dimensions >= 4, got {len(self.use_dim)}'  # noqa: E501

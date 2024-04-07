@@ -154,12 +154,12 @@ def create_groundtruth_database(dataset_class_name,
                 use_camera=with_mask,
             ),
             data_prefix=dict(
-                pts='training/velodyne_reduced', img='training/image_2'),
+                pts='training/velodyne', img='training/image_2'),
             pipeline=[
                 dict(
                     type='LoadPointsFromFile',
                     coord_type='LIDAR',
-                    load_dim=4,
+                    load_dim=6,
                     use_dim=4,
                     backend_args=backend_args),
                 dict(
@@ -168,6 +168,31 @@ def create_groundtruth_database(dataset_class_name,
                     with_label_3d=True,
                     backend_args=backend_args)
             ])
+    elif dataset_class_name == '4D_dataset':
+        backend_args = None
+        dataset_cfg.update(
+            modality=dict(
+                use_lidar=True,
+                # use_camera=with_mask,
+                use_camera=False,
+            ),
+            data_prefix=dict(
+                pts='training/velodyne', img='training/image_2'),
+            pipeline=[
+                dict(
+                    type='LoadPointsFromFile',
+                    coord_type='LIDAR',
+                    load_dim=6,
+                    # use_dim=4,
+                    use_dim=6,
+                    backend_args=backend_args),
+                dict(
+                    type='LoadAnnotations3D',
+                    with_bbox_3d=True,
+                    with_label_3d=True,
+                    backend_args=backend_args)
+            ])
+    
 
     elif dataset_class_name == 'NuScenesDataset':
         dataset_cfg.update(
@@ -514,7 +539,7 @@ class GTDatabaseCreater:
             dataset_cfg.update(
                 test_mode=False,
                 data_prefix=dict(
-                    pts='training/velodyne_reduced', img='training/image_2'),
+                    pts='training/velodyne', img='training/image_2'),
                 modality=dict(
                     use_lidar=True,
                     use_depth=False,
@@ -525,7 +550,7 @@ class GTDatabaseCreater:
                     dict(
                         type='LoadPointsFromFile',
                         coord_type='LIDAR',
-                        load_dim=4,
+                        load_dim=6,
                         use_dim=4,
                         backend_args=backend_args),
                     dict(
@@ -534,7 +559,32 @@ class GTDatabaseCreater:
                         with_label_3d=True,
                         backend_args=backend_args)
                 ])
-
+        elif self.dataset_class_name == '4D_dataset':
+            backend_args = None
+            dataset_cfg.update(
+                test_mode=False,
+                data_prefix=dict(
+                    pts='training/velodyne', img='training/image_2'),
+                modality=dict(
+                    use_lidar=True,
+                    use_depth=False,
+                    use_lidar_intensity=True,
+                    use_camera=self.with_mask,
+                ),
+                pipeline=[
+                    dict(
+                        type='LoadPointsFromFile',
+                        coord_type='LIDAR',
+                        load_dim=6,
+                        # use_dim=4,
+                        use_dim=6,
+                        backend_args=backend_args),
+                    dict(
+                        type='LoadAnnotations3D',
+                        with_bbox_3d=True,
+                        with_label_3d=True,
+                        backend_args=backend_args)
+                ])
         elif self.dataset_class_name == 'NuScenesDataset':
             dataset_cfg.update(
                 use_valid_flag=True,

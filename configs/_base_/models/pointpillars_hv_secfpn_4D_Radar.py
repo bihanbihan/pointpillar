@@ -7,7 +7,7 @@ model = dict(
         voxel=True,
         voxel_layer=dict(
             max_num_points=32,  # max_points_per_voxel
-            point_cloud_range=[0, -39.68, -3, 69.12, 39.68, 1],
+            point_cloud_range=[-40, -40, -3, 40, 40, 1],
             voxel_size=voxel_size,
             max_voxels=(16000, 40000))),
     voxel_encoder=dict(
@@ -15,10 +15,12 @@ model = dict(
         in_channels=4,
         feat_channels=[64],
         with_distance=False,
+        with_cluster_center=False,
+        with_voxel_center=False,
         voxel_size=voxel_size,
-        point_cloud_range=[0, -39.68, -3, 69.12, 39.68, 1]),
+        point_cloud_range=[-40, -40, -3, 40, 40, 1]),
     middle_encoder=dict(
-        type='PointPillarsScatter', in_channels=64, output_shape=[496, 432]),
+        type='PointPillarsScatter', in_channels=64, output_shape=[512, 512]),
     backbone=dict(
         type='SECOND',
         in_channels=64,
@@ -32,6 +34,7 @@ model = dict(
         out_channels=[128, 128, 128]),
     bbox_head=dict(
         type='Anchor3DHead',
+        # num_classes=5,
         num_classes=4,
         in_channels=384,
         feat_channels=384,
@@ -40,12 +43,15 @@ model = dict(
         anchor_generator=dict(
             type='AlignedAnchor3DRangeGenerator',
             ranges=[
-                [0, -39.68, -0.6, 69.12, 39.68, -0.6],
+                [0, -39.68, -0.6, 69.12, 39.68, -0.6], # for Pedestrian
                 [0, -39.68, -0.6, 69.12, 39.68, -0.6],
                 [0, -39.68, -1.78, 69.12, 39.68, -1.78],
-                [0, -39.68, -1.78, 69.12, 39.68, -1.78],#########
+                # [0, -39.68, -1.78, 69.12, 39.68, -1.78],
+                [0, -39.68, -1.78, 69.12, 39.68, -1.78], # for Bus
+
             ],
-            sizes=[[0.8, 0.6, 1.73], [1.76, 0.6, 1.73], [3.9, 1.6, 1.56],[3.9, 1.6, 1.56]],##########
+            # sizes=[[0.8, 0.6, 1.73], [1.76, 0.6, 1.73], [3.9, 1.6, 1.56], [3.9, 1.6, 1.56], [3.9, 1.6, 1.56]],
+            sizes=[[0.8, 0.6, 1.73], [1.76, 0.6, 1.73], [3.9, 1.6, 1.56], [3.9, 1.6, 1.56]],
             rotations=[0, 1.57],
             reshape_out=False),
         diff_rad_by_sin=True,
@@ -79,6 +85,20 @@ model = dict(
                 min_pos_iou=0.35,
                 ignore_iof_thr=-1),
             dict(  # for Car
+                type='Max3DIoUAssigner',
+                iou_calculator=dict(type='mmdet3d.BboxOverlapsNearest3D'),
+                pos_iou_thr=0.6,
+                neg_iou_thr=0.45,
+                min_pos_iou=0.45,
+                ignore_iof_thr=-1),
+            # dict(  # for Truck
+            #     type='Max3DIoUAssigner',
+            #     iou_calculator=dict(type='mmdet3d.BboxOverlapsNearest3D'),
+            #     pos_iou_thr=0.6,
+            #     neg_iou_thr=0.45,
+            #     min_pos_iou=0.45,
+            #     ignore_iof_thr=-1),
+            dict(  # for Bus
                 type='Max3DIoUAssigner',
                 iou_calculator=dict(type='mmdet3d.BboxOverlapsNearest3D'),
                 pos_iou_thr=0.6,

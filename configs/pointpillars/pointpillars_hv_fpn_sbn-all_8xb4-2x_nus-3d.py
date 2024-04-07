@@ -8,4 +8,4 @@ _base_ = [
 # Since the models are trained by 24 epochs by default, we set evaluation
 # interval to be 24. Please change the interval accordingly if you do not
 # use a default schedule.
-train_cfg = dict(val_interval=24)
+train_cfg = dict(val_interval=5)

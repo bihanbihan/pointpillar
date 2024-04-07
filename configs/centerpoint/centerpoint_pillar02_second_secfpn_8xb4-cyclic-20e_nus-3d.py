@@ -27,6 +27,7 @@ model = dict(
 
 dataset_type = 'NuScenesDataset'
 data_root = 'data/nuscenes/'
+# data_root = '/home/tsing-adept/datasets/nuScenes/'
 backend_args = None
 
 db_sampler = dict(

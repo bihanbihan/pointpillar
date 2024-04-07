@@ -142,11 +142,12 @@ class PillarFeatureNet(nn.Module):
             features_ls.append(f_center)
 
         if self._with_distance:
-            points_dist = torch.norm(features[:, :, :3], 2, 2, keepdim=True)
+            # points_dist = torch.norm(features[:, :, :3], 2, 2, keepdim=True)
+            points_dist = torch.norm(features, 2, dim = -1, keepdim=True)
             features_ls.append(points_dist)
 
         # Combine together feature decorations
-        features = torch.cat(features_ls, dim=-1)
+        features = torch.cat(features_ls, dim=1)
         # The feature decorations were calculated without regard to whether
         # pillar was empty. Need to ensure that
         # empty pillars remain set to zeros.
@@ -294,7 +295,8 @@ class DynamicPillarFeatureNet(PillarFeatureNet):
             points_mean = self.map_voxel_center_to_point(
                 coors, voxel_mean, mean_coors)
             # TODO: maybe also do cluster for reflectivity
-            f_cluster = features[:, :3] - points_mean[:, :3]
+            # f_cluster = features[:, :3] - points_mean[:, :3]
+            f_cluster = features - points_mean.unsqueeze(1)
             features_ls.append(f_cluster)
 
         # Find distance of x, y, and z from pillar center
@@ -310,6 +312,7 @@ class DynamicPillarFeatureNet(PillarFeatureNet):
 
         if self._with_distance:
             points_dist = torch.norm(features[:, :3], 2, 1, keepdim=True)
+            # points_dist = torch.norm(features, 2, dim = -1, keepdim=True)
             features_ls.append(points_dist)
 
         # Combine together feature decorations

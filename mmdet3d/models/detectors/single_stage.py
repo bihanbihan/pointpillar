@@ -72,6 +72,7 @@ class SingleStage3DDetector(Base3DDetector):
             dict: A dictionary of loss components.
         """
         x = self.extract_feat(batch_inputs_dict)
+        #print("Feature tensor shape:", x.shape) 
         losses = self.bbox_head.loss(x, batch_data_samples, **kwargs)
         return losses
 

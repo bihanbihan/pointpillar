@@ -13,6 +13,7 @@ from mmdet3d.visualization.local_visualizer import Det3DLocalVisualizer
 
 dataset_type = 'NuScenesDataset'
 data_root = 'data/nuscenes/'
+#data_root = '/home/tsing-adept/datasets/nuScenes'
 class_names = [
     'car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
     'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'

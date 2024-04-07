@@ -8,8 +8,8 @@ from mmdet3d.structures import CameraInstance3DBoxes
 from .det3d_dataset import Det3DDataset
 
 
-@DATASETS.register_module()
-class KittiDataset(Det3DDataset):
+@DATASETS.register_module(name='4D_dataset')
+class FourDDataset(Det3DDataset):
     r"""KITTI Dataset.
 
     This class serves as the API for experiments on the `KITTI Dataset
@@ -53,8 +53,7 @@ class KittiDataset(Det3DDataset):
     """
     # TODO: use full classes of kitti
     METAINFO = {
-        'classes': ('Pedestrian', 'Cyclist', 'Car', 'Truck','Bus', 'Van'
-                    'Person_sitting', 'Tram'),
+        'classes': ('Pedestrian', 'Cyclist', 'Car', 'Truck','Bus'),
         'palette': [(106, 0, 228), (119, 11, 32), (165, 42, 42), (0, 0, 192),
                     (197, 226, 255), (0, 60, 100), (0, 0, 142), (255, 77, 255)]
     }

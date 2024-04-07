@@ -28,6 +28,7 @@ class_names = [
 metainfo = dict(classes=class_names)
 dataset_type = 'NuScenesDataset'
 data_root = 'data/nuscenes/'
+#data_root = '/home/tsing-adept/datasets/nuScenes'
 # Input modality for nuScenes dataset, this is consistent with the submission
 # format which requires the information in input_modality.
 input_modality = dict(use_lidar=True, use_camera=False)
